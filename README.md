@@ -81,6 +81,8 @@ A fully gamified household management application that transforms mundane househ
 
 ## 🚀 Quick Start
 
+### Local Development
+
 1. **Build the client:**
    ```bash
    cd client
@@ -95,6 +97,32 @@ A fully gamified household management application that transforms mundane househ
 
 3. **Open your browser:**
    Go to `http://localhost:3001`
+
+### 🌐 GitHub Pages Deployment
+
+This project is configured for automatic deployment to GitHub Pages!
+
+**Live Demo:** [https://abdulsamadsheikh.github.io/homerush/](https://abdulsamadsheikh.github.io/homerush/)
+
+#### How it works:
+1. **Automatic Deployment**: Every push to the `main` branch triggers a GitHub Actions workflow
+2. **Build Process**: The workflow builds the React app and deploys it to GitHub Pages
+3. **Live Updates**: Your site updates automatically when you push changes
+
+#### Manual Deployment:
+```bash
+cd client
+npm run deploy
+git add .
+git commit -m "Deploy to GitHub Pages"
+git push origin main
+```
+
+#### GitHub Pages Setup:
+1. Go to your repository settings on GitHub
+2. Navigate to "Pages" section
+3. Select "GitHub Actions" as the source
+4. The workflow will automatically deploy your site
 
 ## 🎮 How to Use
 
