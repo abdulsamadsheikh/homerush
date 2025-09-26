@@ -44,13 +44,19 @@ jobs:
         cd client
         npm run build
         
+    - name: Create deployment directory
+      run: |
+        mkdir -p deploy
+        cp -r client/dist/* deploy/
+        cp .nojekyll deploy/
+        
     - name: Setup Pages
       uses: actions/configure-pages@v4
       
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: ./client/dist
+        path: ./deploy
         
     - name: Deploy to GitHub Pages
       id: deployment
