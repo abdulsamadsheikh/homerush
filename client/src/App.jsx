@@ -53,7 +53,7 @@ function App() {
           prevTasks.map(task => {
             if (task.completed || task.timeLeft <= 0) return task;
             
-            const newTimeLeft = Math.max(0, task.timeLeft - 1);
+            const newTimeLeft = Math.max(0, task.timeLeft - 5);
             const timeProgress = (task.maxTime - newTimeLeft) / task.maxTime;
             const newPoints = Math.max(1, Math.floor(task.maxPoints * (1 - timeProgress * 0.5)));
             
@@ -72,12 +72,13 @@ function App() {
             };
           })
         );
-      }, 1000);
+      }, 5000); // Reduced frequency to prevent browser crashes
     }
     
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
   }, [isLoggedIn]);
