@@ -48,6 +48,8 @@ jobs:
       run: |
         ls -la client/dist/
         echo "Build verification complete"
+        echo "Checking index.html content:"
+        head -10 client/dist/index.html
         
     - name: Setup Pages
       uses: actions/configure-pages@v4
