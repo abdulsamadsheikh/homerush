@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -6,24 +6,28 @@ function App() {
   const [theme, setTheme] = useState('light');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [tasks, setTasks] = useState([
-    { id: 1, title: "Take out trash", assignedTo: "Dorian Joel Gabriel Bellanger", completed: false, priority: "medium", dueDate: "2024-01-20", points: 10 },
-    { id: 2, title: "Clean kitchen", assignedTo: "Bilal Rasulovich Mataev", completed: true, priority: "high", dueDate: "2024-01-18", points: 25 },
-    { id: 3, title: "Buy groceries", assignedTo: "Michal Olczak", completed: false, priority: "low", dueDate: "2024-01-22", points: 15 },
-    { id: 4, title: "Walk the dog", assignedTo: "Abdulsamad Sheikh", completed: false, priority: "medium", dueDate: "2024-01-19", points: 20 },
-    { id: 5, title: "Vacuum living room", assignedTo: "Dorian Joel Gabriel Bellanger", completed: true, priority: "medium", dueDate: "2024-01-17", points: 20 },
-    { id: 6, title: "Do laundry", assignedTo: "Bilal Rasulovich Mataev", completed: false, priority: "high", dueDate: "2024-01-21", points: 30 },
-    { id: 7, title: "Water plants", assignedTo: "Michal Olczak", completed: false, priority: "low", dueDate: "2024-01-23", points: 5 },
-    { id: 8, title: "Clean bathroom", assignedTo: "Abdulsamad Sheikh", completed: false, priority: "high", dueDate: "2024-01-20", points: 35 }
+    { id: 1, title: "Take out trash", assignedTo: "Dorian Joel Gabriel Bellanger", completed: false, priority: "medium", dueDate: "2024-01-20", points: 10, maxPoints: 10, timeLeft: 3600, maxTime: 3600, createdAt: Date.now() - 1800000 },
+    { id: 2, title: "Clean kitchen", assignedTo: "Bilal Rasulovich Mataev", completed: true, priority: "high", dueDate: "2024-01-18", points: 25, maxPoints: 25, timeLeft: 0, maxTime: 7200, createdAt: Date.now() - 7200000 },
+    { id: 3, title: "Buy groceries", assignedTo: "Michal Olczak", completed: false, priority: "low", dueDate: "2024-01-22", points: 15, maxPoints: 15, timeLeft: 5400, maxTime: 5400, createdAt: Date.now() - 900000 },
+    { id: 4, title: "Walk the dog", assignedTo: "Abdulsamad Sheikh", completed: false, priority: "medium", dueDate: "2024-01-19", points: 20, maxPoints: 20, timeLeft: 2700, maxTime: 2700, createdAt: Date.now() - 900000 },
+    { id: 5, title: "Vacuum living room", assignedTo: "Dorian Joel Gabriel Bellanger", completed: true, priority: "medium", dueDate: "2024-01-17", points: 20, maxPoints: 20, timeLeft: 0, maxTime: 3600, createdAt: Date.now() - 3600000 },
+    { id: 6, title: "Do laundry", assignedTo: "Bilal Rasulovich Mataev", completed: false, priority: "high", dueDate: "2024-01-21", points: 30, maxPoints: 30, timeLeft: 1800, maxTime: 1800, createdAt: Date.now() - 1800000 },
+    { id: 7, title: "Water plants", assignedTo: "Michal Olczak", completed: false, priority: "low", dueDate: "2024-01-23", points: 5, maxPoints: 5, timeLeft: 7200, maxTime: 7200, createdAt: Date.now() - 0 },
+    { id: 8, title: "Clean bathroom", assignedTo: "Abdulsamad Sheikh", completed: false, priority: "high", dueDate: "2024-01-20", points: 35, maxPoints: 35, timeLeft: 900, maxTime: 900, createdAt: Date.now() - 2700000 }
   ]);
   const [announcements, setAnnouncements] = useState([
     { id: 1, title: "House meeting this weekend", content: "We'll discuss the new chore schedule and upcoming events", author: "Dorian Joel Gabriel Bellanger", date: "2024-01-15", priority: "high" },
     { id: 2, title: "New cleaning supplies", content: "I've restocked the cleaning supplies in the utility closet", author: "Bilal Rasulovich Mataev", date: "2024-01-14", priority: "medium" },
     { id: 3, title: "Internet upgrade", content: "Our internet has been upgraded to 1GB speed - enjoy the faster connection!", author: "Michal Olczak", date: "2024-01-13", priority: "low" }
   ]);
-  const [newTask, setNewTask] = useState({ title: '', assignedTo: '', priority: 'medium', points: 10 });
+  const [newTask, setNewTask] = useState({ title: '', assignedTo: '', priority: 'medium', points: 10, timeLimit: 3600 });
   const [newAnnouncement, setNewAnnouncement] = useState({ title: '', content: '', priority: 'medium' });
   const [showAddTask, setShowAddTask] = useState(false);
   const [showAddAnnouncement, setShowAddAnnouncement] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [streakBonus, setStreakBonus] = useState(1);
+  const timerRef = useRef(null);
 
   const householdMembers = [
     { name: "Dorian Joel Gabriel Bellanger", avatar: "👨‍💼", role: "Admin", level: 5, points: 450, streak: 7, badges: ["🏆", "⭐", "🔥"] },
@@ -40,6 +44,114 @@ function App() {
     { id: 5, name: "Clean Freak", description: "Complete 20 cleaning tasks", icon: "🧹", unlocked: false },
     { id: 6, name: "Leader", description: "Reach level 5", icon: "👑", unlocked: true }
   ];
+
+  // Timer functionality
+  useEffect(() => {
+    if (isLoggedIn) {
+      timerRef.current = setInterval(() => {
+        setTasks(prevTasks => 
+          prevTasks.map(task => {
+            if (task.completed || task.timeLeft <= 0) return task;
+            
+            const newTimeLeft = Math.max(0, task.timeLeft - 1);
+            const timeProgress = (task.maxTime - newTimeLeft) / task.maxTime;
+            const newPoints = Math.max(1, Math.floor(task.maxPoints * (1 - timeProgress * 0.5)));
+            
+            // Add notification for urgent tasks
+            if (newTimeLeft === 300 && task.timeLeft > 300) { // 5 minutes warning
+              addNotification(`${task.title} is running out of time! ⏰`, 'warning');
+            }
+            if (newTimeLeft === 60 && task.timeLeft > 60) { // 1 minute warning
+              addNotification(`${task.title} expires in 1 minute! 🚨`, 'urgent');
+            }
+            
+            return {
+              ...task,
+              timeLeft: newTimeLeft,
+              points: newPoints
+            };
+          })
+        );
+      }, 1000);
+    }
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isLoggedIn]);
+
+  const addNotification = (message, type = 'info') => {
+    const notification = {
+      id: Date.now(),
+      message,
+      type,
+      timestamp: new Date()
+    };
+    setNotifications(prev => [...prev, notification]);
+    
+    // Auto remove notification after 5 seconds
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+    }, 5000);
+    
+    // Browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('HomeRush', { body: message, icon: '/favicon.ico' });
+    }
+  };
+
+  const requestNotificationPermission = () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getTimeColor = (timeLeft, maxTime) => {
+    const percentage = (timeLeft / maxTime) * 100;
+    if (percentage > 50) return 'text-green-600 dark:text-green-400';
+    if (percentage > 20) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const playSound = (type) => {
+    if (!soundEnabled) return;
+    
+    // Create audio context for sound effects
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    if (type === 'complete') {
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.2);
+    } else if (type === 'urgent') {
+      oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(300, audioContext.currentTime + 0.1);
+    }
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  };
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
@@ -59,14 +171,45 @@ function App() {
   };
 
   const toggleTask = (taskId) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    ));
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        const wasCompleted = task.completed;
+        const newCompleted = !wasCompleted;
+        
+        if (newCompleted && !wasCompleted) {
+          // Task completed - play sound and add bonus
+          playSound('complete');
+          
+          // Calculate bonus points based on time remaining
+          const timeBonus = Math.floor(task.points * (task.timeLeft / task.maxTime) * 0.5);
+          const finalPoints = task.points + timeBonus;
+          
+          addNotification(`🎉 Task completed! +${finalPoints} points${timeBonus > 0 ? ` (+${timeBonus} time bonus!)` : ''}`, 'success');
+          
+          return {
+            ...task,
+            completed: newCompleted,
+            finalPoints: finalPoints,
+            timeBonus: timeBonus
+          };
+        } else if (!newCompleted && wasCompleted) {
+          // Task uncompleted
+          return {
+            ...task,
+            completed: newCompleted,
+            finalPoints: undefined,
+            timeBonus: undefined
+          };
+        }
+      }
+      return task;
+    }));
   };
 
   const addTask = (e) => {
     e.preventDefault();
     if (newTask.title.trim() && newTask.assignedTo.trim()) {
+      const timeLimit = parseInt(newTask.timeLimit) || 3600;
       const task = {
         id: Date.now(),
         title: newTask.title,
@@ -74,11 +217,16 @@ function App() {
         completed: false,
         priority: newTask.priority,
         points: parseInt(newTask.points),
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        maxPoints: parseInt(newTask.points),
+        timeLeft: timeLimit,
+        maxTime: timeLimit,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        createdAt: Date.now()
       };
       setTasks([...tasks, task]);
-      setNewTask({ title: '', assignedTo: '', priority: 'medium', points: 10 });
+      setNewTask({ title: '', assignedTo: '', priority: 'medium', points: 10, timeLimit: 3600 });
       setShowAddTask(false);
+      addNotification(`📋 New task added: ${newTask.title}`, 'info');
     }
   };
 
@@ -185,6 +333,25 @@ function App() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="container mx-auto px-4 py-6">
+        {/* Notifications */}
+        {notifications.length > 0 && (
+          <div className="fixed top-4 right-4 z-50 space-y-2">
+            {notifications.map(notification => (
+              <div
+                key={notification.id}
+                className={`glass-effect p-4 rounded-xl shadow-lg animate-slide-up ${
+                  notification.type === 'success' ? 'border-green-500 bg-green-50/80 dark:bg-green-900/20' :
+                  notification.type === 'warning' ? 'border-yellow-500 bg-yellow-50/80 dark:bg-yellow-900/20' :
+                  notification.type === 'urgent' ? 'border-red-500 bg-red-50/80 dark:bg-red-900/20' :
+                  'border-blue-500 bg-blue-50/80 dark:bg-blue-900/20'
+                }`}
+              >
+                <div className="font-medium text-sm">{notification.message}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-4">
@@ -197,6 +364,22 @@ function App() {
             <span className="text-lg font-medium text-gray-700 dark:text-gray-300 hidden sm:block">
               Welcome, {userName}!
             </span>
+            <button 
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className={`glass-effect p-3 rounded-xl hover:shadow-lg transition-all duration-300 ${
+                soundEnabled ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'
+              }`}
+              title={soundEnabled ? 'Sound On' : 'Sound Off'}
+            >
+              {soundEnabled ? '🔊' : '🔇'}
+            </button>
+            <button 
+              onClick={requestNotificationPermission}
+              className="glass-effect p-3 rounded-xl hover:shadow-lg transition-all duration-300"
+              title="Enable Notifications"
+            >
+              🔔
+            </button>
             <button 
               onClick={toggleTheme} 
               className="glass-effect p-3 rounded-xl hover:shadow-lg transition-all duration-300"
@@ -308,49 +491,65 @@ function App() {
             {showAddTask && (
               <div className="glass-effect rounded-3xl p-6 animate-slide-up">
                 <h3 className="text-xl font-display font-semibold mb-6 text-gray-800 dark:text-white">Add New Task</h3>
-                <form onSubmit={addTask} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <input
-                    type="text"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    placeholder="Task title"
-                    className="input-field sm:col-span-2"
-                    required
-                  />
-                  <select
-                    value={newTask.assignedTo}
-                    onChange={(e) => setNewTask({...newTask, assignedTo: e.target.value})}
-                    className="input-field"
-                    required
-                  >
-                    <option value="">Assign to...</option>
-                    {householdMembers.map((member, index) => (
-                      <option key={index} value={member.name}>{member.name}</option>
-                    ))}
-                  </select>
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
-                    className="input-field"
-                  >
-                    <option value="low">Low Priority</option>
-                    <option value="medium">Medium Priority</option>
-                    <option value="high">High Priority</option>
-                  </select>
-                  <input
-                    type="number"
-                    value={newTask.points}
-                    onChange={(e) => setNewTask({...newTask, points: e.target.value})}
-                    placeholder="Points"
-                    min="1"
-                    className="input-field"
-                  />
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                  >
-                    Add Task
-                  </button>
+                <form onSubmit={addTask} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <input
+                      type="text"
+                      value={newTask.title}
+                      onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                      placeholder="Task title"
+                      className="input-field sm:col-span-2"
+                      required
+                    />
+                    <select
+                      value={newTask.assignedTo}
+                      onChange={(e) => setNewTask({...newTask, assignedTo: e.target.value})}
+                      className="input-field"
+                      required
+                    >
+                      <option value="">Assign to...</option>
+                      {householdMembers.map((member, index) => (
+                        <option key={index} value={member.name}>{member.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <select
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="low">Low Priority</option>
+                      <option value="medium">Medium Priority</option>
+                      <option value="high">High Priority</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={newTask.points}
+                      onChange={(e) => setNewTask({...newTask, points: e.target.value})}
+                      placeholder="Points"
+                      min="1"
+                      className="input-field"
+                    />
+                    <select
+                      value={newTask.timeLimit}
+                      onChange={(e) => setNewTask({...newTask, timeLimit: e.target.value})}
+                      className="input-field"
+                    >
+                      <option value="900">15 minutes</option>
+                      <option value="1800">30 minutes</option>
+                      <option value="3600">1 hour</option>
+                      <option value="7200">2 hours</option>
+                      <option value="14400">4 hours</option>
+                      <option value="86400">24 hours</option>
+                    </select>
+                    <button
+                      type="submit"
+                      className="btn-primary"
+                    >
+                      Add Task
+                    </button>
+                  </div>
                 </form>
               </div>
             )}
@@ -360,43 +559,76 @@ function App() {
               <div className="space-y-4">
                 {tasks.map((task, index) => (
                   <div key={task.id} className={`task-item ${task.priority === 'high' ? 'priority-high' : task.priority === 'medium' ? 'priority-medium' : 'priority-low'} animate-slide-up`} style={{animationDelay: `${index * 0.05}s`}}>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
-                      <div className="flex items-center space-x-4 flex-1">
-                        <input 
-                          type="checkbox" 
-                          checked={task.completed}
-                          onChange={() => toggleTask(task.id)}
-                          className="w-5 h-5 text-primary-600 rounded focus:ring-primary-500"
-                        />
-                        <div className="flex-1">
-                          <span className={`font-semibold text-lg ${task.completed ? 'line-through text-gray-500' : 'text-gray-800 dark:text-white'}`}>
-                            {task.title}
-                          </span>
-                          <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                            <span className="font-medium">Assigned to:</span> {task.assignedTo}
-                          </div>
-                          <div className="text-sm text-gray-600 dark:text-gray-300">
-                            <span className="font-medium">Due:</span> {task.dueDate} • <span className="font-medium">{task.points} pts</span>
+                    <div className="space-y-3">
+                      {/* Timer Progress Bar */}
+                      {!task.completed && (
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-1000 ${
+                              task.timeLeft / task.maxTime > 0.5 ? 'bg-green-500' :
+                              task.timeLeft / task.maxTime > 0.2 ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`}
+                            style={{ width: `${(task.timeLeft / task.maxTime) * 100}%` }}
+                          />
+                        </div>
+                      )}
+                      
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-3 sm:space-y-0">
+                        <div className="flex items-center space-x-4 flex-1">
+                          <input 
+                            type="checkbox" 
+                            checked={task.completed}
+                            onChange={() => toggleTask(task.id)}
+                            className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <span className={`font-semibold text-lg ${task.completed ? 'line-through text-gray-500' : 'text-gray-800 dark:text-white'}`}>
+                              {task.title}
+                            </span>
+                            <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                              <span className="font-medium">Assigned to:</span> {task.assignedTo}
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-300">
+                              <span className="font-medium">Due:</span> {task.dueDate} • 
+                              <span className={`font-medium ml-1 ${task.completed && task.finalPoints ? 'text-green-600 dark:text-green-400' : ''}`}>
+                                {task.completed && task.finalPoints ? `${task.finalPoints} pts` : `${task.points} pts`}
+                                {task.completed && task.timeBonus > 0 && (
+                                  <span className="text-green-600 dark:text-green-400 ml-1">
+                                    (+{task.timeBonus} bonus!)
+                                  </span>
+                                )}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          task.priority === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200' :
-                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' :
-                          'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200'
-                        }`}>
-                          {task.priority}
-                        </span>
-                        <span className="text-sm bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 px-3 py-1 rounded-full font-semibold">
-                          {task.points} pts
-                        </span>
-                        <button
-                          onClick={() => deleteTask(task.id)}
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-300"
-                        >
-                          🗑️
-                        </button>
+                        <div className="flex items-center space-x-3">
+                          {/* Timer Display */}
+                          {!task.completed && (
+                            <div className={`text-sm font-mono font-bold ${getTimeColor(task.timeLeft, task.maxTime)}`}>
+                              ⏰ {formatTime(task.timeLeft)}
+                            </div>
+                          )}
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            task.priority === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200' :
+                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' :
+                            'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200'
+                          }`}>
+                            {task.priority}
+                          </span>
+                          <span className={`text-sm px-3 py-1 rounded-full font-semibold ${
+                            task.completed && task.finalPoints ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' :
+                            'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
+                          }`}>
+                            {task.completed && task.finalPoints ? `${task.finalPoints} pts` : `${task.points} pts`}
+                          </span>
+                          <button
+                            onClick={() => deleteTask(task.id)}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-300"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>

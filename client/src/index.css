@@ -105,6 +105,34 @@ body {
   @apply text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50 backdrop-blur-sm;
 }
 
+.timer-bar {
+  @apply transition-all duration-1000 ease-linear;
+}
+
+.timer-urgent {
+  animation: pulse-urgent 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-urgent {
+  0% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.notification-slide {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 640px) {
   .mobile-padding {
     @apply px-4 py-2;
